@@ -59,6 +59,19 @@ data/yolo/labels/{train,val}/*.txt   # class cx cy w h (0..1)
 
 ## 4. Обучение
 
+### Табличный датасет (CSV/Excel: NDVI, погода, почва…) — быстрый старт
+```bash
+# классификация риска / регрессия урожайности — тип задачи определяется сам
+python src/train_tabular.py --data data/raw/dataset.csv --target risk_level --drop zone_id date
+# поиск аномальных зон без разметки (Isolation Forest)
+python src/train_tabular.py --data data/raw/dataset.csv --anomaly --drop zone_id date
+# предсказание
+python src/predict_tabular.py --model runs/tabular/<дата>/model.joblib --data new.csv --out pred.csv
+```
+XGBoost автоматически использует GPU, если он есть. Результаты: `runs/tabular/<дата>/` (model.joblib, metrics.json, feature_importance.csv).
+
+### Фото
+
 ```bash
 # классификатор стадий роста
 python src/train.py --config configs/train.yaml

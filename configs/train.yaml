@@ -7,18 +7,18 @@
 
 data:
   root: data/processed
-  image_size: 384
+  image_size: 224
   num_workers: 8          # на Windows при проблемах поставьте 0-2
 
 model:
-  name: convnext_tiny.fb_in22k_ft_in1k   # любая модель из timm
+  name: efficientnet_b0.ra_in1k   # мини-модель (5M параметров); точнее: convnext_tiny.fb_in22k_ft_in1k
   pretrained: true
   drop_rate: 0.2
 
 train:
-  epochs: 40
-  batch_size: 32          # уменьшите при CUDA out of memory
-  lr: 3.0e-4
+  epochs: 25
+  batch_size: 64          # уменьшите при CUDA out of memory
+  lr: 1.0e-3
   weight_decay: 0.05
   warmup_epochs: 2
   label_smoothing: 0.1
@@ -26,7 +26,7 @@ train:
   channels_last: true
   compile: false          # torch.compile: +скорость на Linux, дольше старт
   grad_accum_steps: 1     # эффективный batch = batch_size * grad_accum_steps
-  early_stopping_patience: 8
+  early_stopping_patience: 6
   seed: 42
 
 output_dir: runs/growth_stage

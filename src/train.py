@@ -2,8 +2,12 @@
 
 Запуск:  python src/train.py --config configs/train.yaml
 """
-import time as _t0; _START = _t0.time()
-print("Загрузка библиотек (torch, timm)... первый запуск на Windows может занять 1-2 мин", flush=True)
+import multiprocessing as _mp
+import time as _t0
+_START = _t0.time()
+_MAIN = _mp.parent_process() is None  # воркеры DataLoader тоже импортируют этот файл — им не печатаем
+if _MAIN:
+    print("Загрузка библиотек (torch, timm)... первый запуск на Windows может занять 1-2 мин", flush=True)
 import argparse
 import json
 import math
@@ -30,7 +34,8 @@ def resolve_num_workers(value) -> int:
         return 2 if os.name == "nt" else min(8, os.cpu_count() or 1)
     return int(value)
 
-print(f"Библиотеки загружены за {_t0.time() - _START:.0f} с", flush=True)
+if _MAIN:
+    print(f"Библиотеки загружены за {_t0.time() - _START:.0f} с", flush=True)
 
 
 def seed_everything(seed: int) -> None:

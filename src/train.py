@@ -2,6 +2,8 @@
 
 Запуск:  python src/train.py --config configs/train.yaml
 """
+import time as _t0; _START = _t0.time()
+print("Загрузка библиотек (torch, timm)... первый запуск на Windows может занять 1-2 мин", flush=True)
 import argparse
 import json
 import math
@@ -27,6 +29,8 @@ def resolve_num_workers(value) -> int:
     if value == "auto":
         return 2 if os.name == "nt" else min(8, os.cpu_count() or 1)
     return int(value)
+
+print(f"Библиотеки загружены за {_t0.time() - _START:.0f} с", flush=True)
 
 
 def seed_everything(seed: int) -> None:
@@ -92,6 +96,7 @@ def main() -> None:
     dcfg, mcfg, tcfg = cfg["data"], cfg["model"], cfg["train"]
 
     seed_everything(tcfg["seed"])
+    print("Проверка GPU...", flush=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
@@ -112,6 +117,7 @@ def main() -> None:
     num_classes = len(classes)
     print(f"Классы ({num_classes}): {classes}")
 
+    print(f"Создание модели {mcfg['name']} (при первом запуске скачиваются веса)...", flush=True)
     model = timm.create_model(mcfg["name"], pretrained=mcfg["pretrained"],
                               num_classes=num_classes, drop_rate=mcfg["drop_rate"])
     data_cfg = resolve_data_config({}, model=model)
@@ -150,6 +156,7 @@ def main() -> None:
     (out_dir / "config.yaml").write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
     writer = SummaryWriter(out_dir / "tb")
 
+    print(f"Старт обучения: {len(train_ds)} фото train, {len(val_ds)} val", flush=True)
     best_f1, bad_epochs = -1.0, 0
     # история обучения для графика на сайте
     history = {"model": mcfg["name"], "train_size": len(train_ds), "val_size": len(val_ds),

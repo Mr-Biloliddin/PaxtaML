@@ -10,3 +10,7 @@ outputs/
 *.pth
 *.onnx
 .ipynb_checkpoints/
+
+# датасеты не храним в git
+Cotton Leaf Image Dataset/
+*.zip

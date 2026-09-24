@@ -18,6 +18,12 @@ def main() -> None:
 
     rng = random.Random(args.seed)
     src, dst = Path(args.src), Path(args.dst)
+    # если внутри одна папка-обёртка (частый случай в архивах Kaggle) — спускаемся в неё
+    subdirs = [p for p in src.iterdir() if p.is_dir()]
+    while len(subdirs) == 1 and not any(f.suffix.lower() in IMG_EXT for f in src.iterdir()):
+        src = subdirs[0]
+        subdirs = [p for p in src.iterdir() if p.is_dir()]
+    print(f"Классы берутся из: {src}")
     for cls_dir in sorted(p for p in src.iterdir() if p.is_dir()):
         files = sorted(f for f in cls_dir.rglob("*") if f.suffix.lower() in IMG_EXT)
         rng.shuffle(files)
@@ -31,7 +37,9 @@ def main() -> None:
             out = dst / split / cls_dir.name
             out.mkdir(parents=True, exist_ok=True)
             for f in items:
-                shutil.copy2(f, out / f.name)
+                # префикс из подпапки, чтобы одинаковые имена файлов не перезаписали друг друга
+                name = "_".join(f.relative_to(cls_dir).parts)
+                shutil.copy2(f, out / name)
         print(f"{cls_dir.name}: " + ", ".join(f"{k}={len(v)}" for k, v in splits.items()))
 
 

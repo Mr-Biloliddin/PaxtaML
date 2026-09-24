@@ -19,6 +19,11 @@ xgboost>=2.1
 joblib>=1.4
 openpyxl>=3.1
 
+# Локальный сайт для проверки модели
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.9
+
 # Анализ и визуализация
 pandas>=2.2
 scikit-learn>=1.5

@@ -86,7 +86,17 @@ python src/train_yolo.py --data configs/yolo_data.yaml --model yolo11s.pt
 python src/predict.py --weights runs/growth_stage/<дата>/best.pt --input path/to/images
 ```
 
-## 5. Что уже настроено для GPU
+## 5. Локальный сайт для проверки модели
+
+```bash
+python app/server.py            # Windows: run_app.bat
+```
+Откройте http://127.0.0.1:8000 и перетащите фото листа (или вставьте Ctrl+V).
+Сайт покажет диагноз, уверенность, вероятности по классам, причину и что проверить.
+По умолчанию берётся последняя модель `runs/growth_stage/*/best.pt`; другую можно указать через `--weights`.
+Чтобы открыть с телефона в той же Wi-Fi сети: `python app/server.py --host 0.0.0.0` и зайти на `http://<IP компьютера>:8000`.
+
+## 6. Что уже настроено для GPU
 
 - Смешанная точность (AMP): bf16 на Ampere и новее, иначе fp16 с GradScaler
 - TF32, `cudnn.benchmark`, `channels_last`, `pin_memory`, многопоточная загрузка данных
@@ -94,7 +104,7 @@ python src/predict.py --weights runs/growth_stage/<дата>/best.pt --input pat
 - `torch.compile` по желанию (`compile: true`, лучше работает на Linux)
 - Косинусный LR с прогревом, label smoothing, ранняя остановка по macro-F1
 
-## 6. Если не хватает памяти (CUDA out of memory)
+## 7. Если не хватает памяти (CUDA out of memory)
 
 - Уменьшите `batch_size` (32 → 16 → 8) и увеличьте `grad_accum_steps`
 - Уменьшите `image_size` (384 → 288 → 224)

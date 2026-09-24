@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaxtaML — диагностика листа</title>
+<style>
+  :root {
+    --bg: #f6f7f4; --surface: #ffffff; --text: #1d2420; --muted: #65706a;
+    --border: #dfe3dc; --accent: #2f7d4f; --accent-soft: #e4f1e8;
+    --ok: #2f7d4f; --warn: #b7791f; --crit: #c0392b;
+    --ok-soft: #e4f1e8; --warn-soft: #fbf0dc; --crit-soft: #fbe5e2;
+    --bar: #d4ddd6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121614; --surface: #1b201d; --text: #e6ebe7; --muted: #9aa59e;
+      --border: #2c332f; --accent: #5cbf83; --accent-soft: #1f3327;
+      --ok: #5cbf83; --warn: #e0a84a; --crit: #ec7063;
+      --ok-soft: #1f3327; --warn-soft: #3a2f1b; --crit-soft: #3d2220;
+      --bar: #2c332f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 20px 16px; border-bottom: 1px solid var(--border); background: var(--surface); }
+  header .wrap { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+  h1 span { color: var(--accent); }
+  .meta { color: var(--muted); font-size: 13px; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  main { padding: 24px 16px 48px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .drop { border: 2px dashed var(--border); border-radius: 10px; min-height: 300px;
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          text-align: center; gap: 8px; cursor: pointer; padding: 16px; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: var(--accent-soft); }
+  .drop img { max-width: 100%; max-height: 360px; border-radius: 8px; }
+  .drop .hint { color: var(--muted); font-size: 13px; }
+  button { font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 8px;
+           padding: 10px 18px; cursor: pointer; font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  .row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .empty { color: var(--muted); display: flex; align-items: center; justify-content: center; min-height: 300px; text-align: center; }
+  .verdict { border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .verdict.ok { background: var(--ok-soft); } .verdict.warn { background: var(--warn-soft); } .verdict.critical { background: var(--crit-soft); }
+  .verdict .label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .verdict .title { font-size: 22px; font-weight: 700; margin: 2px 0; }
+  .verdict.ok .title { color: var(--ok); } .verdict.warn .title { color: var(--warn); } .verdict.critical .title { color: var(--crit); }
+  .verdict .conf { font-variant-numeric: tabular-nums; }
+  .lowconf { margin-top: 8px; font-size: 13px; color: var(--warn); font-weight: 600; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 18px 0 8px; }
+  .prob { display: grid; grid-template-columns: 1fr 56px; gap: 4px 10px; align-items: center; margin-bottom: 8px; font-size: 14px; }
+  .prob .bar { grid-column: 1 / -1; height: 6px; background: var(--bar); border-radius: 3px; overflow: hidden; }
+  .prob .fill { height: 100%; background: var(--accent); border-radius: 3px; }
+  .prob .pct { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+  .prob.top .pct { color: var(--text); font-weight: 600; }
+  ul { margin: 0; padding-left: 20px; } li { margin-bottom: 6px; }
+  .note { font-size: 12px; color: var(--muted); margin-top: 18px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .err { color: var(--crit); font-weight: 600; }
+  .spinner { width: 28px; height: 28px; border: 3px solid var(--bar); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Paxta<span>ML</span> · диагностика листа хлопка</h1>
+    <div class="meta" id="meta">загрузка модели…</div>
+  </div>
+</header>
+<main class="wrap">
+  <div class="grid">
+    <section class="card">
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="image/*" hidden>
+        <div id="dropContent">
+          <strong>Перетащите фото листа сюда</strong>
+          <div class="hint">или нажмите, чтобы выбрать файл · JPG, PNG</div>
+        </div>
+      </label>
+      <div class="row">
+        <button id="analyze" disabled>Анализировать</button>
+        <button id="reset" class="ghost" hidden>Другое фото</button>
+      </div>
+    </section>
+
+    <section class="card" id="result">
+      <div class="empty">Загрузите фото, чтобы получить результат</div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const drop = $("drop"), fileInput = $("file"), btn = $("analyze"), resetBtn = $("reset"), result = $("result");
+let current = null;
+
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct = p => (p * 100).toFixed(1) + "%";
+
+fetch("/api/info").then(r => r.json()).then(i => {
+  $("meta").textContent = `${i.model} · ${i.classes.length} классов · ${i.device.toUpperCase()}` +
+    (i.val_f1 ? ` · val F1 ${i.val_f1}` : "");
+}).catch(() => { $("meta").textContent = "сервер недоступен"; });
+
+function setFile(f) {
+  if (!f || !f.type.startsWith("image/")) return;
+  current = f;
+  const url = URL.createObjectURL(f);
+  $("dropContent").innerHTML = `<img src="${url}" alt="Фото листа">`;
+  btn.disabled = false; resetBtn.hidden = false;
+  analyze();
+}
+
+fileInput.addEventListener("change", e => setFile(e.target.files[0]));
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => setFile(e.dataTransfer.files[0]));
+window.addEventListener("paste", e => { const f = [...e.clipboardData.files][0]; if (f) setFile(f); });
+btn.addEventListener("click", analyze);
+resetBtn.addEventListener("click", () => {
+  current = null; fileInput.value = "";
+  $("dropContent").innerHTML = `<strong>Перетащите фото листа сюда</strong><div class="hint">или нажмите, чтобы выбрать файл · JPG, PNG</div>`;
+  btn.disabled = true; resetBtn.hidden = true;
+  result.innerHTML = `<div class="empty">Загрузите фото, чтобы получить результат</div>`;
+});
+
+async function analyze() {
+  if (!current) return;
+  btn.disabled = true;
+  result.innerHTML = `<div class="empty"><div class="spinner"></div></div>`;
+  const fd = new FormData(); fd.append("file", current);
+  try {
+    const t0 = performance.now();
+    const r = await fetch("/api/predict", { method: "POST", body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || "Ошибка сервера");
+    render(d, Math.round(performance.now() - t0));
+  } catch (e) {
+    result.innerHTML = `<div class="empty err">${esc(e.message)}</div>`;
+  } finally { btn.disabled = false; }
+}
+
+function render(d, ms) {
+  const a = d.advice;
+  const probs = d.probabilities.map((p, i) => `
+    <div class="prob${i === 0 ? " top" : ""}">
+      <span>${esc(p.class)}</span><span class="pct">${pct(p.p)}</span>
+      <div class="bar"><div class="fill" style="width:${(p.p * 100).toFixed(1)}%"></div></div>
+    </div>`).join("");
+  result.innerHTML = `
+    <div class="verdict ${esc(a.severity)}">
+      <div class="label">Результат анализа</div>
+      <div class="title">${esc(a.title)}</div>
+      <div class="conf">Уверенность модели: <strong>${pct(d.confidence)}</strong> · ${ms} мс</div>
+      ${d.low_confidence ? `<div class="lowconf">Низкая уверенность — нужна ручная проверка</div>` : ""}
+    </div>
+    <h2>Вероятная причина</h2>
+    <div>${esc(a.cause)}</div>
+    <h2>Что проверить / сделать</h2>
+    <ul>${a.actions.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+    <h2>Вероятности по классам</h2>
+    ${probs}
+    <div class="note">Результат по фото — сигнал для осмотра, а не окончательный диагноз.
+      Решение о защите растений принимается после проверки в поле.</div>`;
+}
+</script>
+</body>
+</html>

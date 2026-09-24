@@ -8,7 +8,7 @@
 data:
   root: data/processed
   image_size: 224
-  num_workers: 8          # на Windows при проблемах поставьте 0-2
+  num_workers: auto       # auto: 2 на Windows, до 8 на Linux; при ошибках памяти поставьте 0
 
 model:
   name: efficientnet_b0.ra_in1k   # мини-модель (5M параметров); точнее: convnext_tiny.fb_in22k_ft_in1k

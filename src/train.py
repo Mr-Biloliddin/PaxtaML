@@ -5,6 +5,7 @@
 import argparse
 import json
 import math
+import os
 import random
 import time
 from pathlib import Path
@@ -20,6 +21,12 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics.classification import MulticlassAccuracy, MulticlassF1Score
 from torchvision import datasets, transforms
 from tqdm import tqdm
+
+
+def resolve_num_workers(value) -> int:
+    if value == "auto":
+        return 2 if os.name == "nt" else min(8, os.cpu_count() or 1)
+    return int(value)
 
 
 def seed_everything(seed: int) -> None:
@@ -112,11 +119,16 @@ def main() -> None:
 
     train_ds = datasets.ImageFolder(root / "train", transform=train_tf)
     val_ds = datasets.ImageFolder(root / "val", transform=eval_tf)
-    loader_kw = dict(num_workers=dcfg["num_workers"], pin_memory=device.type == "cuda",
-                     persistent_workers=dcfg["num_workers"] > 0)
-    train_dl = DataLoader(train_ds, batch_size=tcfg["batch_size"], shuffle=True,
-                          drop_last=True, **loader_kw)
-    val_dl = DataLoader(val_ds, batch_size=tcfg["batch_size"] * 2, shuffle=False, **loader_kw)
+    workers = resolve_num_workers(dcfg["num_workers"])
+    # На Windows каждый воркер — отдельный процесс с копией torch/CUDA (~1-2 ГБ виртуальной памяти),
+    # поэтому много воркеров переполняет файл подкачки. Валидацию там грузим в главном процессе.
+    val_workers = 0 if os.name == "nt" else workers
+    print(f"DataLoader workers: train={workers}, val={val_workers}")
+    pin = device.type == "cuda"
+    train_dl = DataLoader(train_ds, batch_size=tcfg["batch_size"], shuffle=True, drop_last=True,
+                          num_workers=workers, pin_memory=pin, persistent_workers=workers > 0)
+    val_dl = DataLoader(val_ds, batch_size=tcfg["batch_size"] * 2, shuffle=False,
+                        num_workers=val_workers, pin_memory=pin, persistent_workers=val_workers > 0)
 
     model.to(device)
     if tcfg["channels_last"]:

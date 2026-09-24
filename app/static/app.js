@@ -293,88 +293,129 @@ function pagePhyto() {
   </section>`;
 }
 
+/* Статистика по test для простых формулировок: сколько верно, здоровые/больные, точность по болезням. */
+function testStats(test) {
+  if (!test?.confusion_matrix) return null;
+  const cm = test.confusion_matrix, cls = test.classes;
+  const h = cls.indexOf("Healthy Leaf");
+  const total = cm.flat().reduce((a, b) => a + b, 0);
+  const correct = cm.reduce((a, row, i) => a + row[i], 0);
+  const perClass = cls.map((c, i) => ({ cls: c, correct: cm[i][i], total: cm[i].reduce((a, b) => a + b, 0) }));
+  let sickTotal = 0, sickFound = 0, falseAlarm = 0;
+  if (h >= 0) {
+    cm.forEach((row, i) => { if (i !== h) { const n = row.reduce((a, b) => a + b, 0); sickTotal += n; sickFound += n - row[h]; } });
+    falseAlarm = cm[h].reduce((a, b) => a + b, 0) - cm[h][h];
+  }
+  return { total, correct, perClass, h, sickTotal, sickFound, falseAlarm, healthy: h >= 0 ? perClass[h] : null };
+}
+
+function confidenceWord(p) {
+  if (p >= 0.85) return ["высокая", "ok"];
+  if (p >= 0.6) return ["средняя", "warn"];
+  return ["низкая", "critical"];
+}
+
 function pageAI() {
   const info = state.info, r = state.result;
   const ok = !!info;
-  const sevOf = r ? r.advice.severity : "ok";
-  const t = r?.timing_ms;
-  const steps = [
-    ["Загрузка и декодирование снимка", t?.load],
-    [`Предобработка (${info?.image_size || 224}×${info?.image_size || 224}, нормализация)`, t?.preprocess],
-    [`Классификация болезни (CNN · ${esc(info?.model?.split(".")[0] || "—")})`, t?.inference],
-    ["Рекомендация агроному", t?.advice],
-  ];
-  const tr = info?.training, test = info?.test;
-  const bestEpoch = tr?.epochs?.length ? tr.epochs.reduce((a, b) => (b.val_f1 > a.val_f1 ? b : a)) : null;
-  const nums = test
-    ? [["Accuracy", test.accuracy], ["Precision", test.precision], ["Recall", test.recall], ["F1-score", test.f1]]
-    : bestEpoch ? [["Accuracy (val)", bestEpoch.val_acc], ["F1 (val)", bestEpoch.val_f1]] : [];
+  const tr = info?.training, test = info?.test, ts = testStats(test);
+  const trainN = tr?.train_size;
 
+  // ---- снимок ----
   let viewer;
   if (state.preview || r) {
+    const totalMs = r ? Object.values(r.timing_ms).reduce((a, b) => a + b, 0) : 0;
     viewer = `<img src="${esc(state.preview || r.image)}" alt="Загруженный снимок">
-      <div class="cap">${r ? `Снимок · ${new Date().toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}` : "Снимок загружен"}</div>
       <div class="status-bar">
-        <div class="row"><span>${state.busy ? "Анализ…" : state.error ? `<span class="err">${esc(state.error)}</span>` : "Анализ завершён"}</span>
-          <b>${r && !state.busy ? Math.round(Object.values(r.timing_ms).reduce((a, b) => a + b, 0)) + " мс" : ""}</b></div>
+        <div class="row"><span>${state.busy ? "ИИ изучает снимок…" : state.error ? `<span class="err">${esc(state.error)}</span>` : "Готово"}</span>
+          <b>${r && !state.busy ? `за ${num(totalMs / 1000, 2)} сек` : ""}</b></div>
         <div class="progress ${state.busy ? "run" : ""}"><i></i></div>
       </div>`;
   } else {
-    viewer = `<div class="ph">${icon.upload}<b>Перетащите фото листа сюда</b><small>или нажмите, чтобы выбрать · можно вставить Ctrl+V · с телефона — камера</small></div>`;
+    viewer = `<div class="ph">${icon.upload}<b>Загрузите фото листа хлопка</b><small>Перетащите файл сюда или нажмите. С телефона можно сразу сфотографировать.</small></div>`;
   }
 
-  return `
-  <section class="page">
-    <div class="page-head">
-      <div>
-        <div class="eyebrow">Нейросеть анализирует фото листьев хлопка</div>
-        <h1>ИИ-анализ посевов</h1>
-      </div>
-      <div class="head-actions">
-        <span class="model-pill ${ok ? "" : "off"}"><i></i><b>${ok ? "CottonNet" : "Модель"}</b>${ok ? ` · ${esc(info.device.toUpperCase())} · модель работает` : " · не подключена"}</span>
-        <button class="btn primary" data-action="upload">${icon.upload}Загрузить снимок</button>
-      </div>
-    </div>
-
-    <div class="grid ai-top">
-      <div class="viewer" data-action="upload">${viewer}</div>
-      <div class="ai-right">
-        <div class="card diag">
-          ${r ? `
-            <div class="head">
-              <div><div class="label">Диагноз модели</div><div class="name">${esc(r.advice.title)}</div></div>
-              <div class="conf"><b class="sev-${sevOf}">${pct(r.confidence)}</b><small>уверенность</small></div>
-            </div>
-            ${r.low_confidence ? `<div class="lowconf">Низкая уверенность — сделайте ещё фото и проверьте растение вручную</div>` : ""}
-            <div class="probs">${r.probabilities.map((p, i) => `
-              <div class="prob ${i === 0 ? "top" : ""} ${i === 0 && sevOf === "ok" ? "ok" : ""}"><span>${esc(p.title)}</span><span class="track"><i style="width:${(p.p * 100).toFixed(1)}%"></i></span><b>${pct(p.p)}</b></div>`).join("")}
-            </div>` : `
-            <div class="label" style="color:var(--muted);font-size:13.5px">Диагноз модели</div>
-            <div class="name" style="font-family:var(--display);font-size:20px;margin:6px 0 14px">Ожидает снимок</div>
-            <div class="probs">${(info?.classes || []).map(c => `<div class="prob"><span>${esc(titleOf(c))}</span><span class="track"><i style="width:0"></i></span><b>—</b></div>`).join("")}</div>`}
+  // ---- результат простыми словами ----
+  let diag;
+  if (r) {
+    const healthy = r.prediction === "Healthy Leaf";
+    const [cw, cwTone] = confidenceWord(r.confidence);
+    const others = r.probabilities.slice(1, 3).filter(p => p.p >= 0.01);
+    diag = `
+      <div class="verdict-big ${healthy ? "ok" : r.advice.severity}">
+        <div class="vb-icon">${healthy ? icon.check : "!"}</div>
+        <div>
+          <div class="vb-label">${healthy ? "Растение здорово" : "Обнаружены признаки болезни"}</div>
+          <div class="vb-name">${esc(r.advice.title)}</div>
         </div>
       </div>
-    </div>
-
-    <div class="grid ai-mid">
-      <div class="card">
-        <div class="card-head"><h2>Как работает модель</h2><span class="aside">${r ? "время этого анализа" : ""}</span></div>
-        <ol class="steps">${steps.map(([name, ms], i) => `<li><span class="n">${i + 1}</span><span>${name}</span><b>${ms != null ? num(ms, ms < 10 ? 1 : 0) + " мс" : "—"}</b></li>`).join("")}</ol>
+      <div class="conf-plain">
+        <div class="cp-row"><span>Уверенность ИИ</span><b class="tone-${cwTone}">${cw} · ${pct(r.confidence, 0)}</b></div>
+        <div class="cp-track"><i class="tone-bg-${cwTone}" style="width:${(r.confidence * 100).toFixed(1)}%"></i></div>
+        <div class="cp-hint">${r.low_confidence
+          ? "ИИ сомневается — сделайте ещё 2–3 фото при дневном свете и осмотрите растение."
+          : healthy ? "Признаков болезни на листе не найдено." : "Нужна проверка агрономом в поле — это сигнал, а не окончательный диагноз."}</div>
       </div>
-      <div class="card dark reco">
-        <h2>${r ? "Что проверить / сделать" : "Рекомендация агроному"}</h2>
-        ${r ? `<div class="cause">${esc(r.advice.cause)}</div><ul>${r.advice.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>
-          <div class="fine">Результат по фото — сигнал для осмотра, а не окончательный диагноз.</div>`
-          : `<div class="cause">После анализа здесь появится вероятная причина и конкретные шаги для агронома.</div>`}
-      </div>
-    </div>
+      ${others.length ? `<div class="alt">Менее вероятно: ${others.map(p => `${esc(p.title)} — ${pct(p.p, 0)}`).join(", ")}</div>` : ""}`;
+  } else {
+    diag = `
+      <div class="verdict-big idle"><div class="vb-icon">?</div><div><div class="vb-label">Результат</div><div class="vb-name">Ждём фото листа</div></div></div>
+      <p class="plain">ИИ определит, здоров ли лист, и если нет — какая из ${info?.classes?.length ? info.classes.length - 1 : 4} болезней хлопка вероятнее всего:</p>
+      <div class="disease-list">${(info?.classes || []).filter(c => c !== "Healthy Leaf").map(c => `<span>${esc(titleOf(c))}</span>`).join("")}</div>`;
+  }
 
-    <div class="grid ai-mid">
-      <div class="card quality">
-        <div class="card-head"><h2>Качество модели</h2><span class="aside">${tr ? `обучена на ${num(tr.train_size)} снимках · ${tr.classes.length} классов` : ""}</span></div>
-        ${nums.length ? `<div class="nums">${nums.map(([k, v]) => `<div><small>${k}</small><b>${pct(v, 1)}</b></div>`).join("")}</div>` : `<div class="empty">Метрики появятся после обучения.</div>`}
-        ${test ? "" : `<div class="cap" style="margin-bottom:10px">Для метрик на отложенной выборке запустите <code>python src/evaluate.py --weights …/best.pt</code></div>`}
-        ${tr?.epochs?.length > 1 ? `<div class="cap">Точность по эпохам (1–${tr.epochs.length}): accuracy на val — сплошная, macro-F1 — пунктир</div>` +
+  // ---- как это работает (без технических терминов) ----
+  const how = [
+    ["Фото", "Агроном фотографирует лист на телефон"],
+    ["ИИ", `Нейросеть сравнивает снимок с признаками, которые выучила на ${trainN ? num(trainN) : "~1000"} фото листьев`],
+    ["Диагноз", "Определяет болезнь и насколько уверена в ответе"],
+    ["Совет", "Подсказывает агроному, что проверить в поле"],
+  ];
+
+  // ---- точность простыми словами ----
+  let quality;
+  if (ts) {
+    quality = `
+      <div class="big-stat"><b>${num(ts.correct)} из ${num(ts.total)}</b><span>новых фото, которые ИИ не видел при обучении, распознаны верно — <strong>${pct(ts.correct / ts.total, 1)}</strong></span></div>
+      ${ts.h >= 0 ? `<div class="facts">
+        <div class="fact ${ts.sickFound === ts.sickTotal ? "good" : ""}"><b>${num(ts.sickFound)} из ${num(ts.sickTotal)}</b><span>больных листьев ИИ отметил как больные${ts.sickFound === ts.sickTotal ? " — ни одного пропуска" : ""}</span></div>
+        <div class="fact ${ts.falseAlarm === 0 ? "good" : ""}"><b>${ts.falseAlarm === 0 ? "0" : num(ts.falseAlarm)}</b><span>ложных тревог на здоровых листьях (из ${num(ts.healthy.total)})</span></div>
+      </div>` : ""}
+      <h3 class="subh">Как часто ИИ прав по каждому случаю</h3>
+      <div class="class-acc">${ts.perClass.map(c => {
+        const a = c.total ? c.correct / c.total : 0;
+        return `<div class="ca"><span>${esc(titleOf(c.cls))}</span><span class="track"><i style="width:${(a * 100).toFixed(1)}%"></i></span><b>${c.correct}/${c.total}</b></div>`;
+      }).join("")}</div>
+      <p class="plain small">Ошибки бывают только между похожими болезнями — поэтому система даёт агроному подсказку для проверки, а не ставит окончательный диагноз.</p>`;
+  } else if (tr?.epochs?.length) {
+    const best = tr.epochs.reduce((a, b) => (b.val_acc > a.val_acc ? b : a));
+    quality = `<div class="big-stat"><b>${pct(best.val_acc, 1)}</b><span>верных ответов на проверочных фото</span></div>
+      <p class="plain small">Для итоговой оценки на новых фото запустите <code>python src/evaluate.py --weights …/best.pt</code>.</p>`;
+  } else {
+    quality = `<div class="empty">Показатели появятся после обучения модели.</div>`;
+  }
+
+  // ---- технические детали (свёрнуто) ----
+  const t = r?.timing_ms;
+  const tech = `
+    <details class="card tech">
+      <summary>Технические детали для специалистов</summary>
+      <div class="tech-grid">
+        <div>
+          <h3 class="subh">Модель</h3>
+          <dl>
+            <dt>Архитектура</dt><dd>${esc(info?.model || "—")} (свёрточная нейросеть, transfer learning с ImageNet)</dd>
+            <dt>Вход</dt><dd>${info?.image_size || 224}×${info?.image_size || 224} px, RGB</dd>
+            <dt>Классы</dt><dd>${(info?.classes || []).map(esc).join(", ") || "—"}</dd>
+            <dt>Данные</dt><dd>${tr ? `train ${num(tr.train_size)} · val ${num(tr.val_size)}` : "—"}${test ? ` · test ${num(test.test_size)}` : ""}</dd>
+            <dt>Устройство</dt><dd>${esc(info?.device?.toUpperCase() || "—")}</dd>
+          </dl>
+          ${test ? `<h3 class="subh">Метрики на test (macro)</h3>
+          <div class="nums">${[["Accuracy", test.accuracy], ["Precision", test.precision], ["Recall", test.recall], ["F1", test.f1]].map(([k, v]) => `<div><small>${k}</small><b>${pct(v, 1)}</b></div>`).join("")}</div>` : ""}
+        </div>
+        <div>
+          ${tr?.epochs?.length > 1 ? `<h3 class="subh">Обучение по эпохам</h3>
+          <div class="cap">accuracy на val — сплошная, macro-F1 — пунктир</div>` +
           lineChart({
             w: 680, h: 170, xs: tr.epochs.map(e => e.epoch), ...accRange(tr.epochs),
             xLabel: (x, i) => (i === 0 || i === tr.epochs.length - 1 || x % 5 === 0 ? x : ""),
@@ -383,12 +424,56 @@ function pageAI() {
               { values: tr.epochs.map(e => e.val_acc), color: "#1d3d2a", width: 2.5 },
             ],
           }) : ""}
+          ${t ? `<h3 class="subh">Время последнего анализа</h3>
+          <dl><dt>Чтение файла</dt><dd>${num(t.load, 1)} мс</dd><dt>Предобработка</dt><dd>${num(t.preprocess, 1)} мс</dd>
+          <dt>Нейросеть</dt><dd>${num(t.inference, 1)} мс</dd><dt>Рекомендация</dt><dd>${num(t.advice, 1)} мс</dd></dl>` : ""}
+        </div>
       </div>
-      <div class="card">
-        <div class="card-head"><h2>Последние распознавания</h2><span class="aside">всего: ${state.history.length}</span></div>
-        ${recentGrid(state.history.slice(0, 4), "Здесь появятся ваши анализы.")}
+    </details>`;
+
+  return `
+  <section class="page">
+    <div class="page-head">
+      <div>
+        <div class="eyebrow">Диагностика болезней хлопка по фото листа</div>
+        <h1>ИИ-анализ посевов</h1>
+      </div>
+      <div class="head-actions">
+        <span class="model-pill ${ok ? "" : "off"}"><i></i>${ok ? "ИИ готов к работе" : "ИИ не подключён"}</span>
+        <button class="btn primary" data-action="upload">${icon.upload}Загрузить фото</button>
       </div>
     </div>
+
+    <div class="grid ai-top">
+      <div class="viewer" data-action="upload">${viewer}</div>
+      <div class="ai-right">
+        <div class="card diag">${diag}</div>
+        <div class="card dark reco">
+          <h2>Что делать агроному</h2>
+          ${r ? `<div class="cause"><b>Почему это бывает:</b> ${esc(r.advice.cause)}</div>
+            <ul>${r.advice.actions.map(a => `<li>${esc(a)}</li>`).join("")}</ul>`
+            : `<div class="cause">После анализа здесь появятся понятные шаги: что осмотреть, что проверить и когда.</div>`}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><h2>Как это работает</h2></div>
+      <ol class="how">${how.map(([k, v], i) => `<li><span class="n">${i + 1}</span><div><b>${k}</b><span>${v}</span></div></li>`).join("")}</ol>
+    </div>
+
+    <div class="grid ai-mid">
+      <div class="card quality">
+        <div class="card-head"><h2>Насколько ИИ можно доверять</h2><span class="aside">проверка на новых фото</span></div>
+        ${quality}
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>Последние проверки</h2><span class="aside">всего: ${state.history.length}</span></div>
+        ${recentGrid(state.history.slice(0, 4), "Здесь появятся ваши проверки.")}
+      </div>
+    </div>
+
+    ${tech}
   </section>`;
 }
 

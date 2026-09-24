@@ -18,6 +18,9 @@ def main() -> None:
 
     rng = random.Random(args.seed)
     src, dst = Path(args.src), Path(args.dst)
+    if not src.is_dir():
+        raise SystemExit(f"Папка не найдена: {src.resolve()}\n"
+                         "Проверьте путь или переместите датасет в папку проекта.")
     # если внутри одна папка-обёртка (частый случай в архивах Kaggle) — спускаемся в неё
     subdirs = [p for p in src.iterdir() if p.is_dir()]
     while len(subdirs) == 1 and not any(f.suffix.lower() in IMG_EXT for f in src.iterdir()):

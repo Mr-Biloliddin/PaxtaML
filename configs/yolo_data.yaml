@@ -1,0 +1,14 @@
+# Датасет для детекции (подсчёт коробочек/цветков/растений) в формате YOLO.
+# Структура:
+#   data/yolo/images/{train,val}/*.jpg
+#   data/yolo/labels/{train,val}/*.txt   (class cx cy w h, нормированные 0..1)
+path: data/yolo
+train: images/train
+val: images/val
+
+names:
+  0: plant      # растение
+  1: bud        # бутон
+  2: flower     # цветок
+  3: boll       # зелёная коробочка
+  4: open_boll  # раскрытая коробочка (хлопок-сырец)

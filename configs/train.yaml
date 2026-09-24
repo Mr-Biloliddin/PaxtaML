@@ -1,0 +1,32 @@
+# Обучение классификатора стадий роста хлопка.
+# Структура датасета (ImageFolder): одна папка = один класс.
+#   data/processed/train/<класс>/*.jpg
+#   data/processed/val/<класс>/*.jpg
+#   data/processed/test/<класс>/*.jpg   (необязательно)
+# Если есть только data/raw/<класс>/*.jpg — запустите scripts/split_dataset.py.
+
+data:
+  root: data/processed
+  image_size: 384
+  num_workers: 8          # на Windows при проблемах поставьте 0-2
+
+model:
+  name: convnext_tiny.fb_in22k_ft_in1k   # любая модель из timm
+  pretrained: true
+  drop_rate: 0.2
+
+train:
+  epochs: 40
+  batch_size: 32          # уменьшите при CUDA out of memory
+  lr: 3.0e-4
+  weight_decay: 0.05
+  warmup_epochs: 2
+  label_smoothing: 0.1
+  amp: true               # смешанная точность (fp16/bf16) — быстрее и меньше памяти
+  channels_last: true
+  compile: false          # torch.compile: +скорость на Linux, дольше старт
+  grad_accum_steps: 1     # эффективный batch = batch_size * grad_accum_steps
+  early_stopping_patience: 8
+  seed: 42
+
+output_dir: runs/growth_stage

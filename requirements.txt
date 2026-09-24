@@ -1,0 +1,24 @@
+# PyTorch с CUDA ставится отдельно (см. install_gpu.sh / install_gpu.bat),
+# т.к. колёса берутся с download.pytorch.org под нужную версию CUDA.
+
+# Модели и обучение
+timm>=1.0.9
+torchmetrics>=1.4
+albumentations>=1.4.18
+opencv-python>=4.10
+Pillow>=10.4
+numpy>=1.26,<3
+
+# Конфиги, логирование, прогресс
+PyYAML>=6.0
+tensorboard>=2.17
+tqdm>=4.66
+
+# Анализ и визуализация
+pandas>=2.2
+scikit-learn>=1.5
+matplotlib>=3.9
+seaborn>=0.13
+
+# Детекция/сегментация (коробочки, цветки, растения) — YOLO
+ultralytics>=8.3

@@ -4,6 +4,7 @@
 Результат: отчёт в консоли, confusion_matrix.png и test_report.txt рядом с весами.
 """
 import argparse
+import json
 from pathlib import Path
 
 import matplotlib
@@ -11,7 +12,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import timm
 import torch
-from sklearn.metrics import ConfusionMatrixDisplay, classification_report, confusion_matrix
+from sklearn.metrics import (ConfusionMatrixDisplay, accuracy_score, classification_report,
+                             confusion_matrix, f1_score, precision_score, recall_score)
 from timm.data import resolve_data_config
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -54,6 +56,17 @@ def main() -> None:
     print(report)
     out_dir = Path(args.weights).parent
     (out_dir / "test_report.txt").write_text(report, encoding="utf-8")
+    metrics = {
+        "test_size": len(y_true),
+        "accuracy": round(accuracy_score(y_true, y_pred), 4),
+        "precision": round(precision_score(y_true, y_pred, average="macro", zero_division=0), 4),
+        "recall": round(recall_score(y_true, y_pred, average="macro", zero_division=0), 4),
+        "f1": round(f1_score(y_true, y_pred, average="macro", zero_division=0), 4),
+        "confusion_matrix": confusion_matrix(y_true, y_pred).tolist(),
+        "classes": classes,
+    }
+    (out_dir / "test_metrics.json").write_text(json.dumps(metrics, ensure_ascii=False, indent=1),
+                                               encoding="utf-8")
 
     cm = confusion_matrix(y_true, y_pred)
     fig, ax = plt.subplots(figsize=(8, 7))

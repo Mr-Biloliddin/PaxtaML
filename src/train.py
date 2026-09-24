@@ -151,6 +151,9 @@ def main() -> None:
     writer = SummaryWriter(out_dir / "tb")
 
     best_f1, bad_epochs = -1.0, 0
+    # история обучения для графика на сайте
+    history = {"model": mcfg["name"], "train_size": len(train_ds), "val_size": len(val_ds),
+               "classes": classes, "epochs": []}
     for epoch in range(1, tcfg["epochs"] + 1):
         train_model.train()
         running, seen = 0.0, 0
@@ -181,6 +184,11 @@ def main() -> None:
         writer.add_scalar("metrics/val_acc", val_acc, epoch)
         writer.add_scalar("metrics/val_f1", val_f1, epoch)
         print(f"val_loss={val_loss:.4f}  val_acc={val_acc:.4f}  val_f1={val_f1:.4f}")
+        history["epochs"].append({"epoch": epoch, "train_loss": round(running / seen, 4),
+                                  "val_loss": round(val_loss, 4), "val_acc": round(val_acc, 4),
+                                  "val_f1": round(val_f1, 4)})
+        (out_dir / "history.json").write_text(json.dumps(history, ensure_ascii=False, indent=1),
+                                              encoding="utf-8")
 
         ckpt = {"model": model.state_dict(), "model_name": mcfg["name"], "classes": classes,
                 "image_size": dcfg["image_size"], "epoch": epoch, "val_f1": val_f1}

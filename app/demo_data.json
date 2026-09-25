@@ -1,0 +1,81 @@
+{
+  "_note": "Демонстрационные данные для страниц Обзор / Поле / Фитосанитария. Заменяются реальными данными хозяйства.",
+  "farm": {"name": "«Гулистан Агро Кластер»", "region": "Сырдарьинская обл."},
+  "season": {"year": 2026, "day": 104, "date": "15 июля 2026"},
+  "kpi": {
+    "area_ha": 1240, "fields": 18, "varieties": 4,
+    "height_cm": 68, "height_week_delta": 4.2,
+    "ndvi": 0.71,
+    "yield_forecast": 38.6, "yield_vs_plan": 2.1
+  },
+  "height_chart": {
+    "weeks": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    "fact": [5, 10, 16, 24, 31, 40, 51, 59, 68],
+    "norm": [5, 9, 15, 23, 32, 41, 52, 60, 67, 76, 83, 88],
+    "current_week": 9
+  },
+  "fields": [
+    {"id": 7,  "name": "Янгиер-2",  "variety": "Султан",     "ha": 86, "phase": "Цветение",    "height": 72, "ndvi": 0.76, "status": "ok",    "sample": "Healthy Leaf"},
+    {"id": 3,  "name": "Сайхун",    "variety": "Бухоро-102", "ha": 74, "phase": "Цветение",    "height": 64, "ndvi": 0.62, "status": "disease", "sample": "Bacterial Blight"},
+    {"id": 11, "name": "Мирзаабад", "variety": "С-6524",     "ha": 69, "phase": "Бутонизация", "height": 58, "ndvi": 0.66, "status": "water", "sample": "Healthy Leaf"},
+    {"id": 14, "name": "Боёвут",    "variety": "Султан",     "ha": 92, "phase": "Цветение",    "height": 70, "ndvi": 0.74, "status": "ok",    "sample": "Healthy Leaf"},
+    {"id": 5,  "name": "Хаваст",    "variety": "Андижан-36", "ha": 61, "phase": "Цветение",    "height": 61, "ndvi": 0.64, "status": "watch", "sample": "Alternaria Leaf Spot"},
+    {"id": 10, "name": "Акалтын",   "variety": "С-6524",     "ha": 58, "phase": "Бутонизация", "height": 55, "ndvi": 0.63, "status": "watch", "sample": "Verticillium Wilt"}
+  ],
+  "risk_map": {"1": "low", "2": "low", "3": "high", "4": "low", "5": "mid", "6": "low",
+               "7": "low", "8": "low", "9": "low", "10": "mid", "11": "mid", "12": "low",
+               "13": "low", "14": "low", "15": "mid", "16": "low", "17": "low", "18": "low"},
+  "alerts": [
+    {"level": "high", "field": "Поле №3", "text": "признаки бактериального ожога листьев, 4% площади"},
+    {"level": "info", "field": "Поле №11", "text": "влажность почвы 22% — нужен полив до 17 июля"},
+    {"level": "muted", "field": "", "text": "Жара до +41 °C в пятницу — усилить контроль"}
+  ],
+  "weather": {"place": "Гулистан", "temp": 37, "humidity": 24, "wind": "3 м/с, С-З", "gdd": 1684},
+  "field_detail": {
+    "id": 7, "name": "Янгиер-2", "variety": "Султан", "ha": 86, "sown": "2 апреля 2026",
+    "scheme": "90×10 см", "point": "К-3", "height": 72, "density": "104 тыс/га", "shot": "15.07 · 09:40",
+    "days": 104,
+    "phases": [
+      {"name": "Всходы", "date": "18.04", "done": 1},
+      {"name": "3–4 настоящих листа", "date": "09.05", "done": 1},
+      {"name": "Бутонизация", "date": "28.05", "done": 1},
+      {"name": "Цветение", "date": "идёт · 62%", "done": 0.62, "current": true},
+      {"name": "Образование коробочек", "date": "≈ 01.08", "done": 0},
+      {"name": "Раскрытие коробочек", "date": "≈ 05.09", "done": 0}
+    ],
+    "metrics": [
+      {"label": "Симподиальных ветвей", "value": "14", "note": "норма 12–15", "tone": "good"},
+      {"label": "Бутонов на растение", "value": "11,4", "note": "▲ +2,6 за неделю", "tone": "good"},
+      {"label": "Цветков на растение", "value": "4,3", "note": "первые завязи с 10.07", "tone": "muted"},
+      {"label": "Влажность почвы (0–50 см)", "value": "31%", "note": "полив 18 июля · 900 м³/га", "tone": "info"},
+      {"label": "Температура почвы", "value": "+29 °C", "note": "датчик Д-7/2, глубина 10 см", "tone": "muted"}
+    ],
+    "yield": {"value": "41,2 ц/га", "note": "начало уборки ≈ 12 сентября"},
+    "diary": [
+      {"date": "12 мая", "height": "18 см"},
+      {"date": "10 июня", "height": "41 см"},
+      {"date": "15 июля", "height": "72 см"}
+    ]
+  },
+  "phyto": {
+    "checked_week": 2318, "healthy_pct": 93.8, "foci": 3,
+    "cases": [
+      {"class": "Bacterial Blight", "field": "Поле №3 «Сайхун»", "area": "4% площади", "shots": 12,
+       "confidence": 0.87, "level": "high",
+       "text": "Осмотр очагов в течение 24 ч, проверить партию семян; меры защиты — по согласованию со специалистом."},
+      {"class": "Alternaria Leaf Spot", "field": "Поле №5 «Хаваст»", "area": "1,5% площади", "shots": 7,
+       "confidence": 0.74, "level": "mid",
+       "text": "Выборочный осмотр агрономом, проверить обеспеченность калием."},
+      {"class": "Healthy Leaf", "field": "Поле №7 «Янгиер-2»", "area": "контрольная точка К-3", "shots": 5,
+       "confidence": 0.96, "level": "ok",
+       "text": "Отклонений не обнаружено. Следующая съёмка — 18 июля."}
+    ],
+    "factors": [
+      {"name": "Хлопковая совка", "level": "повышенный"},
+      {"name": "Паутинный клещ", "level": "повышенный"},
+      {"name": "Тля", "level": "низкий"},
+      {"name": "Вилт (увядание)", "level": "низкий"}
+    ],
+    "traps": "Феромонные ловушки: 24 шт. · последний осмотр 14.07 · в среднем 6 бабочек совки на ловушку"
+  }
+}

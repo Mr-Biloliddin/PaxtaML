@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oq Oltin — мониторинг хлопка</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%231d3d2a'/%3E%3Ccircle cx='16' cy='13' r='5' fill='%23f3efe6'/%3E%3Ccircle cx='11' cy='18' r='4' fill='%23f3efe6'/%3E%3Ccircle cx='21' cy='18' r='4' fill='%23f3efe6'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="#/overview">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="9" r="3.2"/><circle cx="8" cy="13" r="3"/><circle cx="16" cy="13" r="3"/><path d="M12 16v5M9.5 19.5 12 17l2.5 2.5"/></g></svg>
+      </span>
+      <span><b>Oq Oltin</b><small>мониторинг хлопка</small></span>
+    </a>
+    <nav class="nav" id="nav">
+      <a href="#/overview" data-page="overview"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></svg><span>Обзор</span></a>
+      <a href="#/field" data-page="field"><svg viewBox="0 0 24 24"><path d="M9 4 4 20h16L15 4zM12 4v16"/></svg><span>Поля</span></a>
+      <a href="#/phyto" data-page="phyto"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v6c0 4.5 3 7.5 7 9 4-1.5 7-4.5 7-9V6z M9 12l2 2 4-4"/></svg><span>Фитосанитария</span><em class="badge" id="fociBadge">3</em></a>
+      <a href="#/ai" data-page="ai"><svg viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></svg><span>ИИ-анализ</span><em class="badge ai">AI</em></a>
+    </nav>
+    <div class="farm" id="farm">
+      <small>Хозяйство</small>
+      <b>—</b>
+      <span></span>
+    </div>
+  </aside>
+
+  <main class="main" id="view" tabindex="-1"></main>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" hidden>
+<div class="drop-overlay" id="dropOverlay"><div>Отпустите фото листа для анализа</div></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

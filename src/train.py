@@ -2,9 +2,16 @@
 
 Запуск:  python src/train.py --config configs/train.yaml
 """
+import multiprocessing as _mp
+import time as _t0
+_START = _t0.time()
+_MAIN = _mp.parent_process() is None  # воркеры DataLoader тоже импортируют этот файл — им не печатаем
+if _MAIN:
+    print("Загрузка библиотек (torch, timm)... первый запуск на Windows может занять 1-2 мин", flush=True)
 import argparse
 import json
 import math
+import os
 import random
 import time
 from pathlib import Path
@@ -20,6 +27,15 @@ from torch.utils.tensorboard import SummaryWriter
 from torchmetrics.classification import MulticlassAccuracy, MulticlassF1Score
 from torchvision import datasets, transforms
 from tqdm import tqdm
+
+
+def resolve_num_workers(value) -> int:
+    if value == "auto":
+        return 2 if os.name == "nt" else min(8, os.cpu_count() or 1)
+    return int(value)
+
+if _MAIN:
+    print(f"Библиотеки загружены за {_t0.time() - _START:.0f} с", flush=True)
 
 
 def seed_everything(seed: int) -> None:
@@ -85,6 +101,7 @@ def main() -> None:
     dcfg, mcfg, tcfg = cfg["data"], cfg["model"], cfg["train"]
 
     seed_everything(tcfg["seed"])
+    print("Проверка GPU...", flush=True)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
@@ -105,6 +122,7 @@ def main() -> None:
     num_classes = len(classes)
     print(f"Классы ({num_classes}): {classes}")
 
+    print(f"Создание модели {mcfg['name']} (при первом запуске скачиваются веса)...", flush=True)
     model = timm.create_model(mcfg["name"], pretrained=mcfg["pretrained"],
                               num_classes=num_classes, drop_rate=mcfg["drop_rate"])
     data_cfg = resolve_data_config({}, model=model)
@@ -112,11 +130,16 @@ def main() -> None:
 
     train_ds = datasets.ImageFolder(root / "train", transform=train_tf)
     val_ds = datasets.ImageFolder(root / "val", transform=eval_tf)
-    loader_kw = dict(num_workers=dcfg["num_workers"], pin_memory=device.type == "cuda",
-                     persistent_workers=dcfg["num_workers"] > 0)
-    train_dl = DataLoader(train_ds, batch_size=tcfg["batch_size"], shuffle=True,
-                          drop_last=True, **loader_kw)
-    val_dl = DataLoader(val_ds, batch_size=tcfg["batch_size"] * 2, shuffle=False, **loader_kw)
+    workers = resolve_num_workers(dcfg["num_workers"])
+    # На Windows каждый воркер — отдельный процесс с копией torch/CUDA (~1-2 ГБ виртуальной памяти),
+    # поэтому много воркеров переполняет файл подкачки. Валидацию там грузим в главном процессе.
+    val_workers = 0 if os.name == "nt" else workers
+    print(f"DataLoader workers: train={workers}, val={val_workers}")
+    pin = device.type == "cuda"
+    train_dl = DataLoader(train_ds, batch_size=tcfg["batch_size"], shuffle=True, drop_last=True,
+                          num_workers=workers, pin_memory=pin, persistent_workers=workers > 0)
+    val_dl = DataLoader(val_ds, batch_size=tcfg["batch_size"] * 2, shuffle=False,
+                        num_workers=val_workers, pin_memory=pin, persistent_workers=val_workers > 0)
 
     model.to(device)
     if tcfg["channels_last"]:
@@ -138,7 +161,11 @@ def main() -> None:
     (out_dir / "config.yaml").write_text(yaml.safe_dump(cfg, allow_unicode=True), encoding="utf-8")
     writer = SummaryWriter(out_dir / "tb")
 
+    print(f"Старт обучения: {len(train_ds)} фото train, {len(val_ds)} val", flush=True)
     best_f1, bad_epochs = -1.0, 0
+    # история обучения для графика на сайте
+    history = {"model": mcfg["name"], "train_size": len(train_ds), "val_size": len(val_ds),
+               "classes": classes, "epochs": []}
     for epoch in range(1, tcfg["epochs"] + 1):
         train_model.train()
         running, seen = 0.0, 0
@@ -169,6 +196,11 @@ def main() -> None:
         writer.add_scalar("metrics/val_acc", val_acc, epoch)
         writer.add_scalar("metrics/val_f1", val_f1, epoch)
         print(f"val_loss={val_loss:.4f}  val_acc={val_acc:.4f}  val_f1={val_f1:.4f}")
+        history["epochs"].append({"epoch": epoch, "train_loss": round(running / seen, 4),
+                                  "val_loss": round(val_loss, 4), "val_acc": round(val_acc, 4),
+                                  "val_f1": round(val_f1, 4)})
+        (out_dir / "history.json").write_text(json.dumps(history, ensure_ascii=False, indent=1),
+                                              encoding="utf-8")
 
         ckpt = {"model": model.state_dict(), "model_name": mcfg["name"], "classes": classes,
                 "image_size": dcfg["image_size"], "epoch": epoch, "val_f1": val_f1}
